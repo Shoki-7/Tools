@@ -5,7 +5,6 @@ import os
 
 def pdf_image(pdf_file,img_path, fmt='png', dpi=200):
 
-    #pdf_file、img_pathをPathにする
     pdf_path = Path(pdf_file)
     image_dir = Path(img_path)
 
