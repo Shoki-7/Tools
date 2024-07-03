@@ -1,72 +1,113 @@
 import os
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QCheckBox, QFileDialog, QMessageBox
 
 def remove_text_from_filename(file_name, remove_text):
-    # remove_textが空でない場合は文字列を削除
     if remove_text:
         new_file_name = file_name.replace(remove_text, "")
     else:
-        # remove_textが空の場合は何もせずにそのままのファイル名を使用
         new_file_name = file_name
     return new_file_name
 
 def replace_text_in_filename(file_name, old_text, new_text):
-    # old_textが存在する場合は新しい文字列で置換
     new_file_name = file_name.replace(old_text, new_text)
     return new_file_name
 
 def rename_files_in_directory(directory_path, remove_or_replace, old_text="", new_text="", subdirectories=False):
-    # フォルダ内のファイル一覧を取得
     if subdirectories:
-        # サブディレクトリを含む場合
         files = []
         for root, dirs, filenames in os.walk(directory_path):
             for filename in filenames:
                 files.append(os.path.join(root, filename))
     else:
-        # フォルダ直下のファイルのみ
         files = [os.path.join(directory_path, file) for file in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, file))]
 
-    # print(files)
-
-    # ファイルごとに処理
     for file_path in files:
-        # 新しいファイル名を生成
         if remove_or_replace == "remove":
             new_file_name = remove_text_from_filename(os.path.basename(file_path), old_text)
         elif remove_or_replace == "replace":
             new_file_name = replace_text_in_filename(os.path.basename(file_path), old_text, new_text)
         else:
-            print("無効な選択です。")
+            return "Invalid selection."
+
+        new_path = os.path.join(os.path.dirname(file_path), new_file_name)
+        os.rename(file_path, new_path)
+    
+    return "File renaming completed."
+
+class FileRenamerApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout()
+
+        # Directory selection
+        dir_layout = QHBoxLayout()
+        self.dir_input = QLineEdit()
+        dir_button = QPushButton("Browse")
+        dir_button.clicked.connect(self.browse_directory)
+        dir_layout.addWidget(QLabel("Directory:"))
+        dir_layout.addWidget(self.dir_input)
+        dir_layout.addWidget(dir_button)
+        layout.addLayout(dir_layout)
+
+        # Operation selection
+        self.remove_radio = QRadioButton("Remove")
+        self.replace_radio = QRadioButton("Replace")
+        layout.addWidget(self.remove_radio)
+        layout.addWidget(self.replace_radio)
+
+        # Text inputs
+        self.old_text_input = QLineEdit()
+        layout.addWidget(QLabel("Text to remove/replace:"))
+        layout.addWidget(self.old_text_input)
+
+        self.new_text_input = QLineEdit()
+        layout.addWidget(QLabel("New text (for replace):"))
+        layout.addWidget(self.new_text_input)
+
+        # Subdirectories option
+        self.subdirs_check = QCheckBox("Include subdirectories")
+        layout.addWidget(self.subdirs_check)
+
+        # Rename button
+        rename_button = QPushButton("Rename Files")
+        rename_button.clicked.connect(self.rename_files)
+        layout.addWidget(rename_button)
+
+        self.setLayout(layout)
+        self.setWindowTitle('File Renamer')
+        self.show()
+
+    def browse_directory(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if directory:
+            self.dir_input.setText(directory)
+
+    def rename_files(self):
+        directory = self.dir_input.text()
+        if not directory:
+            QMessageBox.warning(self, "Error", "Please select a directory.")
             return
 
-        # 新しいファイルのパスを作成
-        new_path = os.path.join(os.path.dirname(file_path), new_file_name)
+        if self.remove_radio.isChecked():
+            remove_or_replace = "remove"
+        elif self.replace_radio.isChecked():
+            remove_or_replace = "replace"
+        else:
+            QMessageBox.warning(self, "Error", "Please select Remove or Replace.")
+            return
 
-        # ファイルをリネーム
-        os.rename(file_path, new_path)
+        old_text = self.old_text_input.text()
+        new_text = self.new_text_input.text()
+        subdirectories = self.subdirs_check.isChecked()
 
-if __name__ == "__main__":
-    # ディレクトリのパスを入力
-    directory_path = input("ディレクトリのパスを入力してください: ")
+        result = rename_files_in_directory(directory, remove_or_replace, old_text, new_text, subdirectories)
+        QMessageBox.information(self, "Result", result)
 
-    # 削除か置換か選択
-    remove_or_replace = input("削除する場合は 'remove'、置換する場合は 'replace' を入力してください: ")
-
-    # サブディレクトリを含めるかどうかの選択
-    subdirectories = input("サブディレクトリを含めますか？ (Yes/No): ").lower() == "yes"
-
-    if remove_or_replace == "remove":
-        # 削除したい文字列を入力
-        remove_text = input("削除したい文字列を入力してください: ")
-        rename_files_in_directory(directory_path, remove_or_replace, remove_text, subdirectories=subdirectories)
-    elif remove_or_replace == "replace":
-        # 置換したい文字列を入力
-        old_text = input("置換したい文字列を入力してください: ")
-        # 置換後の文字列を入力
-        new_text = input("置換後の文字列を入力してください: ")
-        rename_files_in_directory(directory_path, remove_or_replace, old_text, new_text, subdirectories=subdirectories)
-    else:
-        print("無効な選択です。")
-
-    print("ファイルのリネームが完了しました。")
-    key = input('Press Enter to exit')
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = FileRenamerApp()
+    sys.exit(app.exec_())
